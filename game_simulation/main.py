@@ -84,7 +84,7 @@ for repeat in range(repeats):
     # Execute planned actions and update memories
     for agent in agents:
         # Execute action
-        action = agent.execute_action(agents, locations.get_location(agent.location), global_time, town_areas, prompt_meta)
+        action = agent.execute_action(agents, locations.get_location(agent.location).name, global_time, town_areas, prompt_meta)
         if log_actions:
             log_output += f"{agent.name} action: {action}\n"
             if print_actions:

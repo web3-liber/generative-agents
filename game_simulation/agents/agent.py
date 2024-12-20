@@ -1,6 +1,11 @@
+import sys
+sys.path.append('../')  # 添加项目根目录到路径
+
 import random
-from utils.text_generation import generate, get_rating
 import networkx as nx
+from utils.text_generation import generate, get_rating
+from locations.locations import Location, Locations
+
 
 class Agent:
      
@@ -77,8 +82,8 @@ class Agent:
         -----------
         other_agents : list
             A list of other Agent objects in the simulation.
-        location : Location
-            The current Location object where the agent is located.
+        location : str
+            The current Location object name where the agent is located.
         global_time : int
             The current time in the simulation.
         town_areas : dict
@@ -93,10 +98,11 @@ class Agent:
         """
 
         people = [agent.name for agent in other_agents if agent.location == location]
+
+        prompt = "You are {}. Your plans are: {}. You are currently in {} with the following description: {}. It is currently {}:00. The following people are in this area: {}. You can interact with them.".format(self.name, self.plans, location, town_areas[location], str(global_time), ', '.join(people))
         
-        prompt = "You are {}. Your plans are: {}. You are currently in {} with the following description: {}. It is currently {}:00. The following people are in this area: {}. You can interact with them.".format(self.name, self.plans, location.name, town_areas[location.name], str(global_time), ', '.join(people))
-        
-        people_description = [f"{agent.name}: {agent.description}" for agent in other_agents if agent.location == location.name]
+        people_description = [f"{agent.name}: {agent.description}" for agent in other_agents if agent.location == location]
+
         prompt += ' You know the following about people: ' + '. '.join(people_description)
         
         prompt += "What do you do in the next hour? Use at most 10 words to explain."
@@ -148,7 +154,7 @@ class Agent:
     def rate_memories(self, locations, global_time, prompt_meta):
 
         """
-         Rates the agent's memories based on their relevance and importance.
+        Rates the agent's memories based on their relevance and importance.
         
         Parameters:
         -----------
@@ -181,7 +187,6 @@ class Agent:
         self.memory_ratings = memory_ratings
         return memory_ratings
 
-
     def rate_locations(self, locations, global_time, prompt_meta):
 
         """
@@ -189,8 +194,8 @@ class Agent:
         
         Parameters:
         -----------
-        locations : Locations
-            The Locations object representing different areas in the simulated environment.
+        locations : str
+            The Locations object name representing different areas in the simulated environment.
         global_time : int
             The current time in the simulation.
         prompt_meta : str
@@ -204,7 +209,7 @@ class Agent:
         """
 
         place_ratings = []
-        for location in locations.locations.values():
+        for location in locations.locations.values(): # location: Location(name, description)
             prompt = "You are {}. Your plans are: {}. It is currently {}:00. You are currently at {}. How likely are you to go to {} next?".format(self.name, self.plans, str(global_time), locations.get_location(self.location), location.name)
             res = generate(prompt_meta.format(prompt), self.use_openai)
             rating = get_rating(res)
@@ -233,3 +238,27 @@ class Agent:
 
         return self.location
 
+if __name__ == "__main__":
+    print("---- test: agent ----")
+    # Assuming you have a world_graph and other necessary objects initialized:
+    world_graph = nx.Graph()  # Example: actual graph structure needs to be defined.
+    town_areas = {"Park":"A big Park"}
+    agent = Agent(name="Alice", description="A cheerful young woman", 
+                  starting_location="Park", world_graph=world_graph, use_openai=True)
+    prompt_meta = """{}"""
+
+    # Generate daily plan
+    agent.plan(global_time=8, prompt_meta=prompt_meta)
+    print(f"Agent's daily plan: {agent.plans}")
+    
+    # Execute action based on current conditions
+    action = agent.execute_action(other_agents=[], location="Park", 
+                                  global_time=8, town_areas=town_areas, prompt_meta=prompt_meta)
+    print(f"Agent's action: {action}")
+    
+    # Update memories based on action results
+    agent.update_memories(other_agents=[], global_time=8, action_results={})
+    
+    # Compress memories
+    compressed_memory = agent.compress_memories(global_time=8)
+    print(f"Compressed memory: {compressed_memory}")
